@@ -1,0 +1,168 @@
+#!/usr/bin/python
+#Captstone project
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import sys
+
+########################---FUNCTIONS---##########################
+
+#---------------------MAIN MENU PRINT OUT------------------------
+def main_menu():
+    print "What type of scan are you looking for?\n"
+    print "1. Bitcoin/e-currency attacks"
+    print "2. SQL attack"
+    print "3. Educational, reasearch, government recon scans"
+    print "4. malware web/server requests"
+    print "5. Exit" 
+
+def coin():
+    print "\nBITCOIN/E-CURRENCY ATTACKS:\n" 
+
+#-------------------SQL DETECTION FUNCTION----------------------
+    
+
+
+
+def sql():
+    print "\nSQL ATTACKS:\n"
+    while True:
+        try:
+            df = pd.read_csv("sorted-elastichoney.csv", sep=None, engine='python')
+            df2 = pd.read_csv("sorted-glastopf.csv", sep=None, engine='python')
+        except IOError:
+            print "One or more files not found. Make sure the following files are included in the working directory."
+            print "\"sorted-elastichoney.csv\" and \"sorted-glastopf.csv\""
+            option()
+            break 
+        else:
+            try:
+                ########################Elasticsearch sql attacks###################
+                print ("\"sorted-elastichoney.csv\" and \"sorted-glastopf.csv\"beings analyzed.")
+                #DataFrame with rows containing signature specfied below
+                signatures = df[df['URL'].str.contains('9200/_search')]
+                
+                #new dataframe slimmed down with only two colums from signature dataframe above
+                country_ip = signatures[['country','source_ip']]
+ 
+                #count country duplicates for ip's.
+                counts = country_ip.groupby(country_ip.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+
+                #sort and print elasticsearch top ip's
+                data1 = counts.sort_values('count', ascending=False)
+                print "\nTop IP's from elastic honeypot\n"
+                print data1
+
+                #pivot columns
+                elastic_pivot = counts.pivot(index='country', columns='source_ip', values='count')
+
+                ########################GLASTOPF SQL INJECTIONS###################
+                #DataFrame with rows containing signature specfied below
+                signatures2 = df2[df2['request_raw'].str.contains('UNION|SELECT|AND|WHERE|CONCAT|OR|\
+                          PROCEDURE|ANALYSE|EXTRACTVALUE|SLEEP|RLIKE|ORDER|BY|ALL')]\
+
+                #new dataframe slimmed down with only two colums from signature dataframe above
+                country_ip2 = signatures2[['country', 'source_ip']]
+                
+                #count country duplicates for ip's.
+                counts2 = country_ip2.groupby(country_ip2.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+                #sort and print elasticsearch top ip's
+                data2 = counts2.sort_values('count', ascending=False)
+                print "\nTop IP's from glastopf honeypot\n"
+                print data2
+
+                #pivot columns
+                glastopf_pivot = counts2.pivot(index='country', columns='source_ip', values='count')
+                
+                ###########PLOT FIGURES############################################
+                fig, ax = plt.subplots(1,2, figsize=(15,7))
+                elastic_pivot.plot(ax=ax[0], title='Elasticsearch sql attacks',kind='bar', rot=45,  width=.7)
+                glastopf_pivot.plot(ax=ax[1], title='Glastopf Injection SQL attacks', kind='bar', rot=45, width=.75)
+                plt.subplots_adjust(bottom=0.2)
+
+                #create list to collect patches data for ealsticsearch and glastopf graphs
+                totals = []
+                totals2 = []
+
+                #find values for elasticsearch and append to list
+                for i in ax[0].patches:
+                    totals.append(i.get_height())
+                total = sum(totals)
+
+                #find values for glastopf and append to list
+                for i in ax[1].patches:
+                    totals2.append(i.get_height())
+                total2 = sum(totals2)
+
+                #set individual bar labels using list for elasticsearch
+                for i in ax[0].patches:
+                    ax[0].text(i.get_x()-.0, i.get_height()+.1, \
+                    str(round((i.get_height()/total)*100, 1))+'%', fontsize=8, color='black')
+
+                #set individual bar labels using list for glastopf
+                for i in ax[1].patches:
+                    ax[1].text(i.get_x()-.05, i.get_height()+5, \
+                    str(round((i.get_height()/total2)*100, 1))+'%', fontsize=9, color='black')
+
+                #turn on grid lines
+                ax[0].grid(True)
+                ax[1].grid(True)
+                #styles
+                ax[0].title.set_position([.5,1.03])
+                ax[0].legend(prop={'size':10})
+                ax[1].legend(prop={'size':10})
+                ax[0].set_ylabel("# of attacks")
+                ax[1].set_ylabel("# of attacks")
+                plt.show()
+                plt.savefig('SQL_Graph_Stats.pdf')
+
+            except KeyError:
+                print "No SQL attacks found in this file. Try another file."
+                continue
+            else:
+                print "\nTry another scan?"
+                option()
+                break
+
+
+#-------------------------RECON SCANS--------------------------
+def recon():
+    print "\nRECON SCANS:\n"
+
+def malware():
+    print "\nMALWARE ATTEMPTS:\n"
+    
+def ex():
+    print "\nfuck it, im out"
+    sys.exit(0)
+
+
+def option():
+    while True:
+        main_menu()
+        num_select = raw_input("\nInput just one number from the menu: ") 
+        if num_select=="1":
+            coin()
+            break
+        elif num_select=="2":
+            sql()
+            break
+        elif num_select=="3":
+            recon()
+            break
+        elif num_select=="4":
+            malware()
+            break
+        elif num_select=="5":
+            ex()
+            break
+        else:
+            print "\nPLEASE TRY AGAIN"
+           
+
+#######################---END FUNCTIONS---######################
+#----------------------------------------------------------------
+##########################---MAIN---############################
+
+option() 
