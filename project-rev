@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import sys
+import warnings
 
 ########################---FUNCTIONS---##########################
 
@@ -13,19 +14,284 @@ def main_menu():
     print "What type of scan are you looking for?\n"
     print "1. Bitcoin/e-currency attacks"
     print "2. SQL attack"
-    print "3. Educational, reasearch, government recon scans"
+    print "3. Educational, reasearch, government attacks"
     print "4. malware web/server requests"
     print "5. Exit" 
 
 def coin():
     print "\nBITCOIN/E-CURRENCY ATTACKS:\n" 
 
+
+#------------OPTION 3, INSTITUTION SUB MENU SELECTION ACTION-------------
+def three():
+    print "Scan for top 25 Organization attacks from:"
+    print "1. wordpot (wordpress attacks)"
+    print "2. SQL attacks"
+    print "3. Malware attacks"
+    print "4. SSH attacks"
+    print "5. All Honeypots"
+    print "6. <- Go back"
+    print "7. Quit"
+
+#-----------------MAIN MENU OPTION SELECTION ACTIONS-----------------
+def option():
+    while True:
+        main_menu()
+        num_select = raw_input("\nInput just one number from the menu: ") 
+        if num_select=="1":
+            coin()
+            break
+        elif num_select=="2":
+            sql("country")
+            break
+        elif num_select=="3":
+            three_org()
+            break
+        elif num_select=="4":
+            malware()
+            break
+        elif num_select=="5":
+            ex()
+            break
+        else:
+            print "\nPLEASE TRY AGAIN"
+           
+
+#-----------------MAIN MENU OPTION SELECTION ACTIONS-----------------
+def option():
+    while True:
+        main_menu()
+        num_select = raw_input("\nInput just one number from the menu: ") 
+        if num_select=="1":
+            coin()
+            break
+        elif num_select=="2":
+            sql("country")
+            break
+        elif num_select=="3":
+            three_org()
+            break
+        elif num_select=="4":
+            malware()
+            break
+        elif num_select=="5":
+            ex()
+            break
+        else:
+            print "\nPLEASE TRY AGAIN"
+           
+def three_org():
+    while True:
+        three()
+        num_select = raw_input("\nInput just one number from the menu: ")
+        if num_select=="1":
+            wordpot_org()
+            break
+        elif num_select=="2":
+            sql("asn")
+            break
+        elif num_select=="3":
+            malware()
+            break
+        elif num_select=="4":
+            ssh()
+            break
+        elif num_select=="5":
+            all_org()
+            break
+        elif num_select=="6":
+            option()
+            break
+        elif num_select=="7":
+            ex()
+            break
+        else:
+            print "\nPLEASE TRY AGAIN"
+
+
+#------------------WORDPOT ORGANIZATIONS-------------------
+def wordpot_org():
+    while True:
+        try:
+            #create dataframe. - wordpot bruteforce port 80 
+            df = pd.read_csv("sorted-wordpot.csv", sep=None, engine='python')
+        except IOError:
+            print "One or more files not found. Make sure the following files \
+                  are included in the working directorry.\n\"sorted-wordpot.csv\""
+            three()
+            break
+        else:
+            try:
+                #DataFrame with rows removed where there are no username or password entries
+                wordpot_signatures = df.dropna(subset=['User Name', 'Password'])
+                #get top 25
+                top25 = wordpot_signatures['asn'].value_counts().head(25)
+                #put top 25 in a new dataframe
+                newTop = pd.DataFrame()
+                for index, val in top25.iteritems():
+                    neww = wordpot_signatures[wordpot_signatures['asn'].str.contains(index)]
+                    newTop = newTop.append(neww)
+
+                #slim dataframe down to only two columns
+                signatures_slim = newTop[['asn','source_ip']]
+                
+                #count duplicates of ans's (institutions) and put into new dataframe
+                wordpot_counts = signatures_slim.groupby(signatures_slim.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+                wordpot_pivot = wordpot_counts.pivot(index='asn', columns='source_ip',values='count')
+#                wordpot_pivot.plot(kind='bar', figsize=(15,7), title='top 25 (max) organizations attacking wordpress - port 80', rot=90, width=.67)
+                
+                ###########PLOT FIGURES############################################
+                ax = wordpot_pivot.plot(figsize=(15,7), title='Wordpot sql attacks port 80',kind='bar', rot=90,  width=.7)
+                  
+                #turn on grid lines
+                ax.grid(True)
+                #styles
+                plt.subplots_adjust(bottom=0.46)
+                ax.title.set_position([.5,1.03])
+                ax.legend(prop={'size':10})
+                ax.set_ylabel("# of attacks")
+                
+                plt.show()
+                plt.savefig('Wordpot_Organization_attacks.pdf')
+
+            except KeyError:
+                print "No attacks found in this file. Try another file."
+                continue
+            else:
+                print "\nTry another scan?"
+                option()
+                break
+
 #-------------------SQL DETECTION FUNCTION----------------------
     
 
+#-----------------INSTITUTION SSH COWRIE DETECTION FUNCTION-----
+
+def ssh():
+    print "\nSSH ATTACKS FROM INSTITUTIONS:\n"
+    while True:
+        try:
+            df2 = pd.read_csv("sorted-cowrie.csv", sep=None, engine='python')
+        except IOError:
+            print "File not found. Make sure the following files are included in the working directory."
+            print "\"sorted-cowrie.csv\""
+            option()
+            break
+        else:
+            try:
+                #DataFrame slimmed down to rows with 'credentials' supplied indicating a ssh login
+                cowrie_sigs = df2[df2['credentials'].str.contains('\[\[')]
+                #get top 25 'asn's'
+                ct = cowrie_sigs['source_ip'].value_counts().head(25)
+                cow_top25 = pd.DataFrame()
+                #pull top 25 IP's from list of them created above (ct) and grab all rows
+                #with those names in the 'source_ip' column. Add to new dataframe.
+                for index, val in ct.iteritems():
+                    cow = cowrie_sigs[cowrie_sigs['source_ip'].str.contains(index)]
+                    cow_top25 = cow_top25.append(cow)
+
+                #slim down dataframe with essential columns
+                cowrie_slim = cow_top25[['asn', 'source_ip']]
+                #count duplicates of ans's (institutions) and put into new dataframe.
+                cowrie_counts = cowrie_slim.groupby(cowrie_slim.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+                cow_pivot = cowrie_counts.pivot(index='source_ip', columns='asn', values='count')
+                ###########PLOT FIGURES############################################
+                ax = cow_pivot.plot(figsize=(15,7), title='Cowrie SSH port 22 attacks - Top 25 IP\'s',kind='bar', rot=90,  width=.7)
+
+                #turn on grid lines
+                ax.grid(True)
+                #styles
+                plt.subplots_adjust(bottom=0.46)
+                ax.title.set_position([.5,1.03])
+                ax.legend(prop={'size':10})
+                ax.set_ylabel("# of attacks")
+
+                plt.show()
+                plt.savefig('Cowrie(SSH)_Organization_attacks.pdf')
+
+            except KeyError:
+                print "No attacks found in this file. Try another file."
+                continue
+            else:
+                print "\nTry another scan?"
+                option()
+                break
 
 
-def sql():
+def malware():
+    print "\nMALWARE ATTACKS (dionaea honeypot)\n"
+    while True:
+        try:
+            df3 = pd.read_csv("sorted-dionaea.csv", sep=None, engine='python')
+        except IOError:
+            print "One or more files not found. Make sure the following files are included in the working directory."
+            print "\"sorted-elastichoney.csv\" and \"sorted-glastopf.csv\""
+            option()
+            break
+        else:
+            try:
+                #DataFrame slimmed down to rows with successful connections 
+                dio_sigs = df3[df3['protocol'].str.contains('Sip')]
+                #get top 25 'asn's'
+                dt = dio_sigs['asn'].value_counts().head(25)
+                dtip = dio_sigs['source_ip'].value_counts().head(8)
+
+                dio_top25 = pd.DataFrame()
+                dio_topIP = pd.DataFrame()
+
+                #pull top 25 asn's from list of them created above (ct) and grab all rows
+                #with those names in the 'asn' column. Add to new dataframe.
+                for index, val in dt.iteritems():
+                    warnings.filterwarnings("ignore", 'This pattern has match groups')
+                    dio = dio_sigs[dio_sigs['asn'].str.contains(index)]
+                    dio_top25 = dio_top25.append(dio)
+
+                for index, val in dtip.iteritems():
+                    warnings.filterwarnings("ignore", 'This pattern has match groups')
+                    dioip = dio_sigs[dio_sigs['source_ip'].str.contains(index)]
+                    dio_topIP = dio_topIP.append(dioip)
+
+                #slim down dataframe with essential columns
+                dio_slim = dio_top25[['asn', 'channel']]
+                dio_slimIP = dio_topIP[['asn','source_ip']]
+
+                #count duplicates of ans's (institutions) and put into new dataframe.
+                dio_counts = dio_slim.groupby(dio_slim.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+                dio_countsIP = dio_slimIP.groupby(dio_slimIP.columns.tolist()).size().reset_index().rename(columns={0:'count'})
+
+                dio_pivot = dio_counts.pivot(index='asn', columns='channel', values='count')
+                dio_pivotIP = dio_countsIP.pivot(index='source_ip', columns='asn', values='count')
+  
+                fig, ax = plt.subplots(1,2, figsize=(15,7))
+                dio_pivot.plot(ax=ax[0], title='Malware attacks',kind='bar', rot=90,  width=.7)
+                dio_pivotIP.plot(ax=ax[1], title='Malware attacks',kind='bar', rot=90,  width=.7)
+                plt.subplots_adjust(bottom=0.46)
+
+                #turn on grid lines
+                ax[0].grid(True)
+                ax[1].grid(True)
+                #styles
+                ax[0].title.set_position([.5,1.03])
+                ax[0].legend(prop={'size':6})
+                ax[1].legend(prop={'size':6})
+                ax[0].set_ylabel("# of attacks")
+                ax[1].set_ylabel("# of attacks")
+                plt.show()
+
+                plt.savefig('MALWARE_Graph_Stats.pdf')
+
+            except KeyError:
+                print "No MALWARE attacks found in this file. Try another file."
+                continue
+            else:
+                print "\nTry another scan?"
+                option()
+                break
+
+
+
+
+def sql(condish):
     print "\nSQL ATTACKS:\n"
     while True:
         try:
@@ -44,7 +310,7 @@ def sql():
                 signatures = df[df['URL'].str.contains('9200/_search')]
                 
                 #new dataframe slimmed down with only two colums from signature dataframe above
-                country_ip = signatures[['country','source_ip']]
+                country_ip = signatures[[condish,'source_ip']]
  
                 #count country duplicates for ip's.
                 counts = country_ip.groupby(country_ip.columns.tolist()).size().reset_index().rename(columns={0:'count'})
@@ -55,15 +321,15 @@ def sql():
                 print data1
 
                 #pivot columns
-                elastic_pivot = counts.pivot(index='country', columns='source_ip', values='count')
+                elastic_pivot = counts.pivot(index=condish, columns='source_ip', values='count')
 
                 ########################GLASTOPF SQL INJECTIONS###################
                 #DataFrame with rows containing signature specfied below
                 signatures2 = df2[df2['request_raw'].str.contains('UNION|SELECT|AND|WHERE|CONCAT|OR|\
-                          PROCEDURE|ANALYSE|EXTRACTVALUE|SLEEP|RLIKE|ORDER|BY|ALL')]\
+                          PROCEDURE|AS|ANALYSE|EXTRACTVALUE|SLEEP|RLIKE|ORDER|BY|ALL')]\
 
                 #new dataframe slimmed down with only two colums from signature dataframe above
-                country_ip2 = signatures2[['country', 'source_ip']]
+                country_ip2 = signatures2[[condish, 'source_ip']]
                 
                 #count country duplicates for ip's.
                 counts2 = country_ip2.groupby(country_ip2.columns.tolist()).size().reset_index().rename(columns={0:'count'})
@@ -73,13 +339,13 @@ def sql():
                 print data2
 
                 #pivot columns
-                glastopf_pivot = counts2.pivot(index='country', columns='source_ip', values='count')
+                glastopf_pivot = counts2.pivot(index=condish, columns='source_ip', values='count')
                 
                 ###########PLOT FIGURES############################################
                 fig, ax = plt.subplots(1,2, figsize=(15,7))
-                elastic_pivot.plot(ax=ax[0], title='Elasticsearch sql attacks',kind='bar', rot=45,  width=.7)
-                glastopf_pivot.plot(ax=ax[1], title='Glastopf Injection SQL attacks', kind='bar', rot=45, width=.75)
-                plt.subplots_adjust(bottom=0.2)
+                elastic_pivot.plot(ax=ax[0], title='Elasticsearch sql attacks',kind='bar', rot=90,  width=.7)
+                glastopf_pivot.plot(ax=ax[1], title='Glastopf Injection SQL attacks', kind='bar', rot=90, width=.75)
+                plt.subplots_adjust(bottom=0.36)
 
                 #create list to collect patches data for ealsticsearch and glastopf graphs
                 totals = []
@@ -103,7 +369,7 @@ def sql():
                 #set individual bar labels using list for glastopf
                 for i in ax[1].patches:
                     ax[1].text(i.get_x()-.05, i.get_height()+5, \
-                    str(round((i.get_height()/total2)*100, 1))+'%', fontsize=9, color='black')
+                    str(round((i.get_height()/total2)*100, 1))+'%', fontsize=8, color='black')
 
                 #turn on grid lines
                 ax[0].grid(True)
@@ -126,40 +392,11 @@ def sql():
                 break
 
 
-#-------------------------RECON SCANS--------------------------
-def recon():
-    print "\nRECON SCANS:\n"
 
-def malware():
-    print "\nMALWARE ATTEMPTS:\n"
     
 def ex():
     print "\nfuck it, im out"
     sys.exit(0)
-
-
-def option():
-    while True:
-        main_menu()
-        num_select = raw_input("\nInput just one number from the menu: ") 
-        if num_select=="1":
-            coin()
-            break
-        elif num_select=="2":
-            sql()
-            break
-        elif num_select=="3":
-            recon()
-            break
-        elif num_select=="4":
-            malware()
-            break
-        elif num_select=="5":
-            ex()
-            break
-        else:
-            print "\nPLEASE TRY AGAIN"
-           
 
 #######################---END FUNCTIONS---######################
 #----------------------------------------------------------------
